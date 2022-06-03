@@ -37,6 +37,11 @@ PLUGINLIB_EXPORT_CLASS(apriltag_ros::ContinuousDetector, nodelet::Nodelet);
 
 namespace apriltag_ros
 {
+
+ContinuousDetector::ContinuousDetector ()
+{
+}
+
 void ContinuousDetector::onInit ()
 {
   ros::NodeHandle& nh = getNodeHandle();
@@ -48,13 +53,9 @@ void ContinuousDetector::onInit ()
   it_ = std::shared_ptr<image_transport::ImageTransport>(
       new image_transport::ImageTransport(nh));
 
-  std::string transport_hint;
-  pnh.param<std::string>("transport_hint", transport_hint, "raw");
-
   camera_image_subscriber_ =
       it_->subscribeCamera("image_rect", 1,
-                          &ContinuousDetector::imageCallback, this,
-                          image_transport::TransportHints(transport_hint));
+                          &ContinuousDetector::imageCallback, this);
   tag_detections_publisher_ =
       nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
   if (draw_tag_detections_image_)
@@ -67,22 +68,12 @@ void ContinuousDetector::imageCallback (
     const sensor_msgs::ImageConstPtr& image_rect,
     const sensor_msgs::CameraInfoConstPtr& camera_info)
 {
-  // Lazy updates:
-  // When there are no subscribers _and_ when tf is not published,
-  // skip detection.
-  if (tag_detections_publisher_.getNumSubscribers() == 0 &&
-      tag_detections_image_publisher_.getNumSubscribers() == 0 &&
-      !tag_detector_->get_publish_tf())
-  {
-    // ROS_INFO_STREAM("No subscribers and no tf publishing, skip processing.");
-    return;
-  }
-
   // Convert ROS's sensor_msgs::Image to cv_bridge::CvImagePtr in order to run
   // AprilTag 2 on the iamge
   try
   {
-    cv_image_ = cv_bridge::toCvCopy(image_rect, image_rect->encoding);
+    cv_image_ = cv_bridge::toCvCopy(image_rect,
+                                    sensor_msgs::image_encodings::BGR8);
   }
   catch (cv_bridge::Exception& e)
   {

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 2.8.3)
 project(apriltag_ros)
 
 find_package(catkin REQUIRED COMPONENTS
@@ -18,7 +18,11 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
-find_package(apriltag REQUIRED)
+
+find_package(PkgConfig)
+pkg_search_module(apriltag REQUIRED apriltag)
+set(apriltag_INCLUDE_DIRS "${apriltag_INCLUDE_DIRS}/apriltag")
+link_directories(${apriltag_LIBDIR})
 
 # Set the build type.  Options are:
 #  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
@@ -26,14 +30,9 @@ find_package(apriltag REQUIRED)
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-# We default to 'Release' if none was specified
-IF(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  MESSAGE(STATUS "Setting build type to 'Release' as none was specified.")
-  SET(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the build type" FORCE)
-  SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Coverage" "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-ENDIF()
+# set(CMAKE_BUILD_TYPE Release)
 
-
+set(CMAKE_CXX_STANDARD 11)
 add_compile_options("-O3" "-funsafe-loop-optimizations" "-fsee" "-funroll-loops" "-fno-math-errno" "-funsafe-math-optimizations" "-ffinite-math-only" "-fno-signed-zeros")
 
 # Note: These options have been turned off to allow for binary releases - 
@@ -65,14 +64,8 @@ generate_messages(
   std_msgs
 )
 
-# Extract the include directories and libraries from apriltag::apriltag as catkin_package() does not support modern cmake.
-get_target_property(apriltag_INCLUDE_DIRS apriltag::apriltag INTERFACE_INCLUDE_DIRECTORIES)
-get_target_property(apriltag_LIBRARIES apriltag::apriltag INTERFACE_LINK_LIBRARIES)
-
 catkin_package(
-  INCLUDE_DIRS
-    include
-    ${EIGEN3_INCLUDE_DIRS}
+  INCLUDE_DIRS include
   CATKIN_DEPENDS
     cv_bridge
     geometry_msgs
@@ -85,8 +78,8 @@ catkin_package(
     std_msgs
     tf
   DEPENDS
-    apriltag
     OpenCV
+    apriltag
   LIBRARIES
     ${PROJECT_NAME}_common
     ${PROJECT_NAME}_continuous_detector
@@ -101,11 +94,12 @@ include_directories(include
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${OpenCV_INCLUDE_DIRS}
+  ${apriltag_INCLUDE_DIRS}
 )
 
 add_library(${PROJECT_NAME}_common src/common_functions.cpp)
 add_dependencies(${PROJECT_NAME}_common ${PROJECT_NAME}_generate_messages_cpp)
-target_link_libraries(${PROJECT_NAME}_common ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} apriltag::apriltag)
+target_link_libraries(${PROJECT_NAME}_common ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${apriltag_LIBRARIES})
 
 add_library(${PROJECT_NAME}_continuous_detector src/continuous_detector.cpp)
 target_link_libraries(${PROJECT_NAME}_continuous_detector ${PROJECT_NAME}_common ${catkin_LIBRARIES})
